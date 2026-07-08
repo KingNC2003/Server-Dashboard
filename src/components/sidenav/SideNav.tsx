@@ -3,7 +3,9 @@
 import "./SideNav.css";
 import Image from "next/image";
 import Link from "next/link";
-
+import { RxDashboard } from "react-icons/rx";
+import { RxHamburgerMenu } from "react-icons/rx";
+import { LuMessageCircle } from "react-icons/lu";
 
 export function SideNav(){
 return(
@@ -22,8 +24,8 @@ return(
         </header>
         <nav id="sideNavNav">
             <h2> WORKSPACE </h2>
-                <Link href="null"> Dashboard </Link>
-                <Link href="null"> Applications </Link>
+                <Link href="null"> <RxDashboard/> Dashboard </Link>
+                <Link href="null"> <RxHamburgerMenu/> Applications </Link>
                 <Link href="null"> Request Help </Link>
                 <Link href="null"> Changelog </Link>
         </nav>

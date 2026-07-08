@@ -1,11 +1,24 @@
 .sideNav{
-    border: 1px solid white;
     position: fixed;
     top: 0;
     left: 0;
-    width: 200px;
+    width: 190px;
     height: 100vh;
+    background-color: #252f3d4d;
 }
+
+.sideNav::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 1px;
+  height: 100%;
+  background: #ffffff8e;
+  transform: scaleX(0.2);
+  transform-origin: right;
+}
+
 .sideNavHead {
     display:flex;
 }
