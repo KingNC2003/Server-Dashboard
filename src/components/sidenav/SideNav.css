@@ -1,10 +1,10 @@
 .sideNav{
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 190px;
-    height: 100vh;
-    background-color: #252f3d4d;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 190px;
+  height: 100vh;
+  background-color: #252f3d4d;
 }
 
 .sideNav::after {
@@ -20,13 +20,174 @@
 }
 
 .sideNavHead {
-    display:flex;
+  display:column;
+  margin-top: 5px;
+  margin-left: 2px;
 }
 
-#sideNavNav {
-    display:flex;
-    flex-direction: column;
+.sideNavHead::after{
+  content: "";
+  position: absolute;
+  margin-top: 10px;
+  width: 190px;
+  height: 1px;
+  background: #ffffff8e;
+  transform: scaleY(0.2);
+  transform-origin: left;
 }
+
+.sideNavHead #title {
+  display: flex;
+  flex-direction: row;
+  color: rgb(255, 255, 255);
+  gap: 0px;
+}
+
+#title h1 {
+  margin-left:-6px;
+}
+
+.sideNavHead #info {
+  display: flex;
+  flex-direction: column;
+  color: rgb(255, 255, 255);
+  margin-top: -6px;
+}
+
+.sideNavHead div h1 {
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.sideNavHead div h2 {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  margin-left: 15px;
+  padding-top: 0px;
+}
+
+#navNavGroup {
+  margin-top: 25px;
+}
+
+
+.sideNavNav h2 {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #566179;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
+  margin-left: 10px;
+}
+
+.sideNavNav {
+  display:flex;
+  flex-direction: column;
+  font-family:  Inter, system-ui, sans-serif;
+  font-size: 14px;
+  color: #cbd5e1;
+  font-weight: 470;
+}
+
+.sideNavNav a {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+  margin-left: 9px;
+  margin-right: 9px;
+  gap: 10px;
+  border-radius: 8px;
+  background-color: transparent;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  padding-left: 5px;
+  padding-right: 5px;
+
+  transition: 
+    background-color 200ms ease,
+    color 200ms ease,
+    opacity 200ms ease;
+}
+.sideNavNav a:hover {
+  background-color: rgba(106, 140, 255, 0.1) ;
+}
+
+.sideNavNav a svg {
+  width: 15px;
+  height: 15px;
+  min-width: 15px;
+  color: #cbd5e1;
+  transition:
+    color 200ms ease
+}
+
+.sideNavNav a[data-active="true"] {
+  color: white;
+  background-color: rgba(106, 140, 255, 0.2);
+}
+
+.sideNavNav a[data-active="true"] svg {
+  color: #6a8cff;
+}
+
+footer {
+  position: fixed;
+  display: flex;
+  flex-direction: row;
+  bottom: 0;
+}
+
+footer #info {
+  font-family: Inter, system-ui, sans-serif;
+  margin-left: 12px;
+  margin-top: 6px;
+}
+
+footer #name {
+  font-size: 14px;
+}
+
+footer #role {
+  font-size: 11px;
+}
+
+footer::before{
+  content: "";
+  position: absolute;
+  margin-bottom: 10px;
+  width: 190px;
+  height: 1px;
+  left: 0;
+  top: -10px;
+  background: #ffffff8e;
+  transform: scaleY(0.2);
+  transform-origin: left;
+}
+
+footer #profPic {
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 2px #6a8cff;
+}
+
+footer button {
+  width: 45px;
+  height: 44px;
+  padding: 0;
+  margin-left: 10px;
+  margin-bottom: 10px;
+  margin-right: 0;
+  margin-top: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  border: none;
+  background:transparent;
+  padding: 1px;
+  overflow: hidden;
+  line-height: 0;
+  appearance: none;
+  }
+
 
 @media (max-width: 768px) {
   .sideNav {
@@ -34,4 +195,38 @@
     width: 100%;
     height: auto;
   }
+}
+
+@media (prefers-color-scheme: light){
+  .sideNav{
+    background-color: #ced6f3ec;
+  }
+  .sideNav::after {
+    background: #0707078e;
+  }
+  .sideNavHead::after{
+    background: #0800008e;
+  }
+  .sideNavHead #title {
+    color:black
+  }
+  .sideNavNav {
+    color: black;
+  }
+  .sideNavNav a[data-active="true"] {
+    color:black;
+    background-color: rgba(106, 140, 255, 0.2);
+  }
+  .sideNavNav a svg {
+    color:black;
+  }
+  .sideNavHead #info {
+  color: rgb(0, 0, 0);
+  }
+  .sideNavNav a[data-active="true"] {
+  background-color: rgba(106, 140, 255, 0.4);
+  }
+  .sideNavNav a:hover {
+  background-color: rgba(106, 140, 255, 0.15) ;
+}
 }
