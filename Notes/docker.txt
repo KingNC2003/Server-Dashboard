@@ -127,3 +127,8 @@ Creating Docker Compose file
                 = — PostgreSQL is ready for a new command.
                 # — the current PostgreSQL role is a superuser.
                 So the connection worked successfully, and psql is waiting for you to enter SQL or a psql command.
+
+
+    (add most commonly used psql commands here .)
+    
+    
