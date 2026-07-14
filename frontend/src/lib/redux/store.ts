@@ -1,5 +1,5 @@
 import { configureStore } from "@reduxjs/toolkit";
-import tempReducer from "@/lib/redux/features/tempSlice";
+import tempReducer from "./features/tempSlice";
 
 export const store = configureStore({
     reducer: {

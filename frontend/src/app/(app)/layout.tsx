@@ -1,6 +1,6 @@
 import React from "react";
 import "./layout.css";
-import { SideNav } from "@/components/sidenav/SideNav";
+import { SideNav } from "../../components/sidenav/SideNav";
 import { getFromCacheMap } from "next/dist/client/components/segment-cache/cache-map";
 
 export default function AppLayout({
