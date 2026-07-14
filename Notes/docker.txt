@@ -8,7 +8,7 @@ Creating Docker Compose file
         ├── .gitignore
         └── frontend/
 
-    - add a service 
+    - In yaml, add a service 
 
         services:
             postgres:
@@ -41,3 +41,89 @@ Creating Docker Compose file
 
     - Above explained
         
+        services:
+            Defines the containers managed by Docker Compose.
+
+        postgres:
+            Names this service postgres. Other containers can later reach it using the hostname postgres.
+
+        image: postgres:17
+            Uses the official PostgreSQL image, pinned to major version 17.
+
+        environment:
+            Passes configuration values into the container.
+
+        POSTGRES_DB
+            Creates the initial database on first startup.
+
+        POSTGRES_USER
+            Creates the initial PostgreSQL administrator user.
+
+        POSTGRES_PASSWORD
+            Sets that user’s password.
+
+        ${VARIABLE:?message}
+            Reads the value from .env and stops with an error if it is missing or empty.
+
+        ports:
+            Publishes PostgreSQL from the container to your computer.
+
+        "127.0.0.1:5432:5432"
+            Maps your computer’s localhost port 5432 to PostgreSQL’s container port 5432, without exposing it to the local network.
+
+        Service-level volumes:
+            Attaches persistent storage to the PostgreSQL container.
+
+        postgres_data:/var/lib/postgresql/data
+            Stores PostgreSQL’s database files in the named volume postgres_data.
+
+        healthcheck:
+            Tells Docker how to check whether PostgreSQL is ready.
+
+        pg_isready
+            Checks whether PostgreSQL is accepting connections.
+
+        interval: 10s
+            Runs the health check every 10 seconds.
+
+        timeout: 5s
+            Gives each check up to 5 seconds.
+
+        retries: 5
+            Marks the container unhealthy after 5 consecutive failures.
+
+        start_period: 10s
+            Gives PostgreSQL 10 seconds to start before failures count normally.
+
+        Top-level volumes:
+            Declares the named volume for the Compose project.
+
+        postgres_data:
+            Tells Compose to create and manage that persistent volume.
+
+    - Then, docker compose up -d 
+
+    - Then, docker compose ps postgres
+        verify functionality
+
+    - Then, docker compose exec postgres sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+        exec 
+            postgres runs a command inside the running postgres service container.
+        sh -lc
+            starts a shell inside the container.
+        The single quotes prevent zsh from expanding the variables on your host.
+        The container shell expands POSTGRES_USER and POSTGRES_DB.
+        psql
+            opens PostgreSQL’s interactive command-line client.
+        -U 
+            selects the PostgreSQL user.
+        -d 
+            selects the database.
+
+    After that command you should be in the shell
+        nexus=# is the interactive psql prompt. It means:
+
+            nexus — you are connected to the database named nexus.
+                = — PostgreSQL is ready for a new command.
+                # — the current PostgreSQL role is a superuser.
+                So the connection worked successfully, and psql is waiting for you to enter SQL or a psql command.
