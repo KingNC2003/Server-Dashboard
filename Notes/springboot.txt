@@ -1,0 +1,200 @@
+1. Create a feature branch
+    git switch -c backend-bootstrap
+
+    Verify:
+    git branch --show-current
+
+2. Verify Java and Maven
+    java --version
+    javac --version
+    mvn --version
+
+    Use a Java version supported by the chosen Spring Boot release.
+
+3. Generate the project with Spring Initializr
+
+    Open in browser: "https://start.spring.io"
+
+    Typical settings:
+        Project: Maven
+        Language: Java
+        Packaging: Jar
+        Java: 17 or newer
+        Dependency: Spring Web
+
+    Common metadata:
+        Group:        dev.example
+        Artifact:     backend
+        Name:         Example Backend
+        Package name: dev.example.backend
+
+    Spring Initializr creates the standard Spring Boot structure, Maven Wrapper, pom.xml, source folders, and tests.
+
+4. Extract the project into backend/
+
+    Example:
+        unzip /mnt/c/Users/<windows-user>/Downloads/backend.zip -d backend
+
+        -d backend extracts the archive into the backend/ directory.
+
+    Expected structure:
+        backend/
+        ├── .mvn/
+        ├── mvnw
+        ├── mvnw.cmd
+        ├── pom.xml
+        └── src/
+
+    If the archive creates backend/backend/, flatten it in zsh:
+        mv backend/backend/*(D) backend/
+        rmdir backend/backend
+
+        *(D) includes hidden files.
+
+5. Understand the important generated files
+    pom.xml
+        Maven’s project configuration file. It defines:
+            - Java version
+            - Spring Boot version
+            - Dependencies
+            - Build plugins
+            - Testing configuration
+            - JAR packaging
+
+    Example Spring Web dependency:
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+    
+6. Test the generated project
+
+    From backend/:
+        ./mvnw test
+
+    Expected result:
+        BUILD SUCCESS
+
+7. Run the Spring Boot application
+    From backend/:
+        ./mvnw spring-boot:run
+
+    With Spring Web installed, the application should remain running and show messages similar to:
+        Tomcat started on port 8080
+        Started BackendApplication
+
+    Stop it with:
+        Ctrl+C
+
+8. Create a backend Dockerfile
+
+    Create:
+        backend/Dockerfile
+
+    Contents:
+        FROM eclipse-temurin:17-jdk AS build
+
+        WORKDIR /app
+
+        COPY .mvn/ .mvn/
+        COPY mvnw pom.xml ./
+        RUN ./mvnw dependency:go-offline
+
+        COPY src/ src/
+        RUN ./mvnw clean package -DskipTests
+
+        FROM eclipse-temurin:17-jre
+
+        WORKDIR /app
+
+        COPY --from=build /app/target/*.jar app.jar
+
+        EXPOSE 8080
+
+        ENTRYPOINT ["java", "-jar", "app.jar"]
+
+    Explanation of above
+        Why both JDK and JRE
+            JDK stage: compiles and packages the application
+            JRE stage: runs the completed JAR
+
+        The second FROM starts a new image, so the final image does not contain the full JDK.
+
+        Why Java is needed in the image
+
+        The container cannot automatically use Java installed on the host machine. The base image supplies Java inside the container.
+
+        Why copy the Maven Wrapper
+
+        The build image can run:
+
+        ./mvnw package
+
+        without requiring Maven to be preinstalled in the base image.
+
+9. Create .dockerignore
+
+    Create:
+        backend/.dockerignore
+
+    Example:
+        target/
+        .git/
+        .idea/
+        .vscode/
+        *.log
+
+    This prevents unnecessary files from being sent as part of the Docker build context.
+
+10. Add the backend to the root Compose file
+
+    Keep one compose.yaml at the repository root.
+
+    Example service:
+        services:
+        backend:
+            build:
+            context: ./backend
+            ports:
+            - "127.0.0.1:8080:8080"
+    Meaning
+        backend
+        Compose service name
+
+        build
+        Build an image instead of pulling one
+
+        context: ./backend
+        Use backend/ as the Docker build workspace
+
+        127.0.0.1:8080:8080
+        Map localhost port 8080 to container port 8080
+
+        Docker can only COPY files from inside the build context.
+
+11. Build the backend image
+
+    From the repository root:
+        docker compose build backend
+
+    The built image is stored in Docker’s internal image storage.
+
+    List images:
+        docker images
+
+12. Run the backend container
+
+        From the repository root:
+            docker compose up backend
+
+        Run in the background:
+            docker compose up -d backend
+
+        View logs:
+            docker compose logs -f backend
+
+        Stop services:
+            docker compose down
+
+14. Review and stage changes
