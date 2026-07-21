@@ -12,7 +12,7 @@ import { IoDocumentTextOutline } from "react-icons/io5";
 import { VscServer } from "react-icons/vsc";
 import { LuUsers } from "react-icons/lu";
 import { LuTicketSlash } from "react-icons/lu";
-import { PiLineVerticalBold } from "react-icons/pi"; // <PiLineVerticalBold/>
+import { PiLineVerticalBold } from "react-icons/pi";
 
 export function SideNav(){
     const pathname = usePathname();
