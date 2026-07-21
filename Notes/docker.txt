@@ -129,6 +129,6 @@ Creating Docker Compose file
                 So the connection worked successfully, and psql is waiting for you to enter SQL or a psql command.
 
 
-    (add most commonly used psql commands here .)
+    (add most commonly used psql commands here )
     
     
