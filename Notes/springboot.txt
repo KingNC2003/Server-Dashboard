@@ -198,3 +198,4 @@
             docker compose down
 
 14. Review and stage changes
+

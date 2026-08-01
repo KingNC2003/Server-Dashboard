@@ -1,0 +1,1248 @@
+Nexus PostgreSQL and Spring Boot Backend Setup
+1. Development environment
+
+The project is being developed with:
+
+Windows desktop
+WSL2 Ubuntu
+Project stored inside the WSL filesystem
+Docker Desktop installed on Windows
+Docker Desktop WSL integration enabled
+zsh shell
+Docker Compose
+Git
+DBeaver for PostgreSQL inspection
+
+The repository structure is:
+
+server-dashboard/
+├── .env
+├── .gitignore
+├── .husky/
+├── compose.yaml
+├── frontend/
+└── backend/
+
+Command locations:
+
+Git commands:
+Anywhere inside the repository
+
+Frontend npm commands:
+frontend/
+
+Backend Maven commands:
+backend/
+
+Docker Compose commands:
+Repository root
+Part 1: PostgreSQL setup
+2. Created the root environment file
+
+The PostgreSQL credentials are stored in the repository root:
+
+.env
+
+Example:
+
+POSTGRES_DB=nexus
+POSTGRES_USER=nexus
+POSTGRES_PASSWORD=replace_with_a_secure_password
+
+The .env file is ignored by Git because it contains secrets.
+
+The root .gitignore should include:
+
+.env
+
+Docker Compose automatically reads the root .env file when commands are run from the repository root.
+
+3. Added PostgreSQL to compose.yaml
+
+The root-level file is:
+
+compose.yaml
+
+The PostgreSQL service uses the official PostgreSQL 17 image:
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+4. What each PostgreSQL setting means
+Service name
+postgres:
+
+This is the Docker Compose service name.
+
+Other services in the same Compose project will later be able to reach PostgreSQL using:
+
+postgres
+
+as the hostname.
+
+For example:
+
+jdbc:postgresql://postgres:5432/nexus
+
+Inside Docker Compose, the service name acts like a DNS hostname.
+
+Image
+image: postgres:17
+
+This tells Docker to use the official PostgreSQL version 17 image.
+
+A custom PostgreSQL Dockerfile is not needed because the official image already contains PostgreSQL and its startup logic.
+
+Environment variables
+environment:
+  POSTGRES_DB: ${POSTGRES_DB}
+  POSTGRES_USER: ${POSTGRES_USER}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+The ${...} syntax tells Compose to read the values from the root .env file.
+
+These variables are mainly used during first-time database initialization.
+
+They create:
+
+A default database
+A PostgreSQL user
+A password for that user
+
+Important behavior:
+
+POSTGRES_DB
+POSTGRES_USER
+POSTGRES_PASSWORD
+
+only initialize a new, empty PostgreSQL data directory.
+
+Changing them later does not automatically update an existing database stored in the named volume.
+
+Port mapping
+ports:
+  - "127.0.0.1:5432:5432"
+
+The format is:
+
+host-address:host-port:container-port
+
+This mapping means:
+
+127.0.0.1
+Only expose PostgreSQL on the local computer
+
+5432 on the host
+Port used by DBeaver and local tools
+
+5432 in the container
+Default PostgreSQL port
+
+Binding to 127.0.0.1 prevents PostgreSQL from being exposed directly to the wider local network.
+
+DBeaver connects using:
+
+Host: localhost
+Port: 5432
+Database: value of POSTGRES_DB
+Username: value of POSTGRES_USER
+Password: value of POSTGRES_PASSWORD
+Named volume
+volumes:
+  - postgres_data:/var/lib/postgresql/data
+
+PostgreSQL stores its database files inside the container at:
+
+/var/lib/postgresql/data
+
+The named volume:
+
+postgres_data
+
+stores those files outside the lifecycle of the container.
+
+This means the database survives container deletion and recreation.
+
+The volume declaration appears at the bottom:
+
+volumes:
+  postgres_data:
+Health check
+healthcheck:
+  test:
+    - CMD-SHELL
+    - pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+  interval: 5s
+  timeout: 5s
+  retries: 5
+
+pg_isready checks whether PostgreSQL is ready to accept connections.
+
+The settings mean:
+
+interval: 5s
+Run the check every five seconds
+
+timeout: 5s
+Allow each check five seconds to finish
+
+retries: 5
+Mark the container unhealthy after five failed checks
+
+A running container and a ready database are not always the same thing. The health check confirms that PostgreSQL has completed startup.
+
+5. Started PostgreSQL
+
+From the repository root:
+
+docker compose up -d postgres
+
+Meaning:
+
+docker compose
+Use the root Compose project
+
+up
+Create and start the service
+
+-d
+Run in detached mode
+
+postgres
+Start only the PostgreSQL service
+
+Container status was checked with:
+
+docker compose ps
+
+Logs were inspected with:
+
+docker compose logs postgres
+
+Follow live logs with:
+
+docker compose logs -f postgres
+
+Stop following logs with:
+
+Ctrl+C
+
+This does not stop the container. It only exits the log viewer.
+
+6. Connected with psql
+
+A PostgreSQL shell was opened inside the container:
+
+docker compose exec postgres psql \
+  -U "$POSTGRES_USER" \
+  -d "$POSTGRES_DB"
+
+Depending on shell environment loading, the literal values may also be used:
+
+docker compose exec postgres psql -U nexus -d nexus
+
+Command meaning:
+
+docker compose exec
+Run a command inside an already-running service
+
+postgres
+The service receiving the command
+
+psql
+PostgreSQL command-line client
+
+-U
+Database user
+
+-d
+Database name
+
+Useful verification queries included:
+
+SELECT version();
+
+Shows the PostgreSQL version.
+
+SELECT current_database(), current_user;
+
+Shows the connected database and current user.
+
+Useful psql meta-commands:
+
+\l
+List databases
+
+\du
+List users and roles
+
+\dt
+List tables
+
+\q
+Exit psql
+
+At that point, \dt showed no application tables because migrations had not been created yet.
+
+7. PostgreSQL volume behavior
+
+Stopping and removing containers while preserving data:
+
+docker compose down
+
+This removes the containers and Compose network but keeps named volumes.
+
+Starting PostgreSQL again:
+
+docker compose up -d postgres
+
+reuses the existing database data.
+
+Deleting the development database completely:
+
+docker compose down -v
+
+The -v flag also removes the named volumes.
+
+Recreate an empty development database:
+
+docker compose down -v
+docker compose up -d postgres
+
+This causes the PostgreSQL image to run first-time initialization again using the current .env values.
+
+This reset procedure is appropriate for development, not production.
+
+8. DBeaver usage
+
+DBeaver is used for:
+
+Inspecting databases
+Viewing tables
+Running ad hoc SQL queries
+Checking indexes and constraints
+Reviewing migration results
+Inspecting data
+
+DBeaver should not be used to manually make permanent schema changes that belong in source control.
+
+For example, permanent changes such as these should not be created manually in DBeaver:
+
+Creating application tables
+Adding columns
+Adding foreign keys
+Adding indexes
+Renaming columns
+Dropping constraints
+
+Those changes should be implemented through Flyway migrations.
+
+Part 2: Spring Boot backend setup
+9. Created the backend branch
+
+From the repository root:
+
+git switch -c backend-bootstrap
+
+Meaning:
+
+git switch
+Change branches
+
+-c
+Create a new branch
+
+backend-bootstrap
+The new branch name
+
+Here, “bootstrap” means creating the initial backend structure. It does not refer to the Bootstrap CSS framework.
+
+10. Verified Java
+
+Inside WSL:
+
+java --version
+javac --version
+
+Both reported Java 17.
+
+Difference:
+
+java
+Runs compiled Java applications
+
+javac
+Compiles Java source code
+
+Spring Boot was configured to use Java 17.
+
+11. Verified Maven
+mvn --version
+
+Maven is the Java build and dependency-management tool.
+
+It handles:
+
+Downloading libraries
+Compiling Java source
+Running tests
+Packaging the application
+Running Spring Boot
+Creating the executable JAR
+
+Spring Boot and Maven have different jobs:
+
+Spring Boot
+Backend framework
+
+Maven
+Build and dependency tool
+
+Spring Boot provides application features.
+
+Maven builds and launches the project containing those features.
+
+12. Generated the project with Spring Initializr
+
+Spring Initializr was opened from WSL:
+
+explorer.exe "https://start.spring.io"
+
+The project settings were:
+
+Project: Maven
+Language: Java
+Spring Boot: stable version
+Group: dev.nexus
+Artifact: backend
+Name: Nexus Backend
+Description: Backend API for the Nexus homelab dashboard
+Package name: dev.nexus.backend
+Packaging: Jar
+Java: 17
+Dependency: Spring Web
+Spring Initializr
+
+Spring Initializr is the official Spring project generator.
+
+It creates:
+
+pom.xml
+Maven Wrapper
+Java source folders
+Resource folders
+Test folders
+Main application class
+Initial test class
+
+It creates the project skeleton, not the actual business features.
+
+13. Initializr field meanings
+Project: Maven
+
+Creates a Maven project using:
+
+pom.xml
+Language: Java
+
+Uses Java source files.
+
+Spring Boot version
+
+Controls the Spring Boot framework version.
+
+Stable versions should be used instead of versions marked:
+
+SNAPSHOT
+M1
+M2
+RC
+Group
+dev.nexus
+
+Defines the project namespace.
+
+Artifact
+backend
+
+Defines the build artifact name.
+
+It affects the generated JAR name and Maven project identity.
+
+Package name
+dev.nexus.backend
+
+Maps to the directory:
+
+src/main/java/dev/nexus/backend/
+Packaging: Jar
+
+Builds the application as an executable JAR file.
+
+Java: 17
+
+Compiles the project for Java 17.
+
+Spring Web dependency
+
+Provides:
+
+Spring MVC
+HTTP request handling
+Controller support
+JSON response support
+Embedded Tomcat
+14. Extracted the project
+
+The downloaded file was located at:
+
+/mnt/c/Users/nicho/Downloads/backend.zip
+
+From the repository root:
+
+unzip /mnt/c/Users/nicho/Downloads/backend.zip -d backend
+
+-d backend means extract into the backend/ directory.
+
+The archive created an extra nested directory:
+
+backend/backend/
+
+It was flattened with zsh:
+
+mv backend/backend/*(D) backend/
+rmdir backend/backend
+
+Explanation:
+
+*
+Match files and directories
+
+(D)
+zsh glob modifier that also includes hidden files
+
+rmdir
+Remove the now-empty directory
+15. Important generated backend files
+backend/
+├── .mvn/
+├── mvnw
+├── mvnw.cmd
+├── pom.xml
+└── src/
+pom.xml
+
+pom.xml is Maven’s Project Object Model file.
+
+It defines:
+
+Project metadata
+Java version
+Spring Boot version
+Dependencies
+Build plugins
+Testing configuration
+Packaging
+
+Example Spring Web dependency:
+
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+Maven Wrapper
+
+The Maven Wrapper consists mainly of:
+
+mvnw
+mvnw.cmd
+.mvn/
+
+It lets the project run its configured Maven setup without depending entirely on a globally installed Maven version.
+
+For WSL and Linux:
+
+./mvnw test
+
+For Windows:
+
+mvnw.cmd test
+
+Global Maven can also work:
+
+mvn test
+
+The wrapper is preferred because it improves consistency between:
+
+Local development
+Other developers
+Docker builds
+CI systems
+16. Tested the generated backend
+
+From backend/:
+
+./mvnw test
+
+This:
+
+Downloads missing dependencies
+Compiles source code
+Compiles test code
+Starts the Spring test context
+Runs tests
+
+Successful output included:
+
+Tests run: 1
+Failures: 0
+Errors: 0
+BUILD SUCCESS
+17. Started the application locally
+
+From backend/:
+
+./mvnw spring-boot:run
+
+This tells Maven to use the Spring Boot Maven plugin to start the application.
+
+Successful startup included:
+
+Tomcat initialized with port 8080
+Tomcat started on port 8080
+Started BackendApplication
+
+The backend listened at:
+
+http://localhost:8080
+
+The process remained attached to the terminal.
+
+It was stopped with:
+
+Ctrl+C
+Part 3: Tomcat
+18. What Tomcat is
+
+Tomcat is a Java web server and servlet container.
+
+Its main job is to:
+
+Listen for HTTP requests
+Accept network connections
+Pass requests into the Spring application
+Receive the result from Spring
+Send HTTP responses back to clients
+
+Example flow:
+
+Browser or frontend
+        |
+        | GET /api/applications
+        v
+Tomcat on port 8080
+        |
+        v
+Spring Boot controller
+        |
+        v
+Service and database logic
+        |
+        v
+JSON response
+        |
+        v
+Tomcat sends response to client
+19. Why Tomcat appeared in the logs
+
+The dependency:
+
+<artifactId>spring-boot-starter-web</artifactId>
+
+includes embedded Tomcat by default.
+
+“Embedded” means Tomcat is included as part of the Spring Boot application.
+
+A separate Tomcat installation is not needed.
+
+When the application starts, Spring Boot starts Tomcat automatically.
+
+20. Tomcat versus Spring Boot
+
+They are not the same thing.
+
+Tomcat
+Handles HTTP connections and web-server behavior
+
+Spring Boot
+Provides the application framework and starts/configures Tomcat
+
+Your Java code
+Contains Nexus business rules and application behavior
+
+Tomcat does not know what an application, category, user, or favorite means.
+
+It only handles the web transport layer.
+
+Spring Boot maps incoming HTTP requests to application code.
+
+21. DispatcherServlet
+
+The logs also showed:
+
+Initializing Spring DispatcherServlet
+
+The DispatcherServlet is part of Spring MVC.
+
+Its role is:
+
+Receive a request from Tomcat
+Find the matching Spring controller
+Call the controller method
+Convert the return value into an HTTP response
+
+The approximate flow is:
+
+HTTP request
+    |
+Tomcat
+    |
+DispatcherServlet
+    |
+Controller
+    |
+Service
+    |
+Repository
+    |
+PostgreSQL
+
+No custom controllers had been created yet, but Spring still initialized the request-routing system.
+
+Part 4: Dockerizing the backend
+22. Created backend/Dockerfile
+
+The file was created at:
+
+backend/Dockerfile
+
+Contents:
+
+FROM eclipse-temurin:17-jdk AS build
+
+WORKDIR /app
+
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+RUN ./mvnw dependency:go-offline
+
+COPY src/ src/
+RUN ./mvnw clean package -DskipTests
+
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+
+COPY --from=build /app/target/*.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+23. What a Dockerfile is
+
+A Dockerfile is a recipe for building one Docker image.
+
+For the backend, it describes:
+
+Which base image to use
+Where files should live
+Which project files to copy
+How to build the JAR
+Which runtime to use
+Which port the application uses
+Which command starts the application
+
+The flow is:
+
+Dockerfile
+    |
+docker build
+    |
+Docker image
+    |
+docker run or Docker Compose
+    |
+Container
+24. Why the Java base image is needed
+
+The Java version selected in Spring Initializr configures how the project is compiled.
+
+It does not install Java inside Docker.
+
+A container has its own isolated filesystem and cannot automatically use Java installed in WSL.
+
+Therefore, the Docker image must include Java.
+
+The selected distribution was:
+
+eclipse-temurin
+
+This is a Java distribution maintained by the Eclipse Adoptium project.
+
+It is unrelated to the Eclipse IDE.
+
+25. Why both JDK and JRE are used
+JDK
+Java Development Kit
+
+Contains:
+
+Java runtime
+Java compiler
+Development and build tools
+
+Used to compile the application.
+
+JRE
+Java Runtime Environment
+
+Contains what is needed to run the compiled application, without the full compiler toolchain.
+
+Used in the final runtime image.
+
+26. Multi-stage Docker build
+
+The first stage is:
+
+FROM eclipse-temurin:17-jdk AS build
+
+This stage builds the JAR.
+
+The second stage is:
+
+FROM eclipse-temurin:17-jre
+
+This starts a new image.
+
+Only the JAR is copied from the first stage:
+
+COPY --from=build /app/target/*.jar app.jar
+
+Therefore, the final image contains:
+
+JRE
+Compiled application JAR
+
+It does not contain the full JDK.
+
+The JDK stage may remain in Docker’s build cache, but it is not included in the final runtime image.
+
+27. Dockerfile line-by-line explanation
+FROM eclipse-temurin:17-jdk AS build
+
+Use Java 17 JDK and name this stage build.
+
+WORKDIR /app
+
+Set /app as the current directory inside the image.
+
+COPY .mvn/ .mvn/
+COPY mvnw pom.xml ./
+
+Copy the Maven Wrapper and Maven configuration.
+
+RUN ./mvnw dependency:go-offline
+
+Download project dependencies before copying the source.
+
+This improves Docker caching because dependencies do not need to be downloaded again every time only source code changes.
+
+COPY src/ src/
+
+Copy the Java source and resources.
+
+RUN ./mvnw clean package -DskipTests
+
+Build the executable JAR.
+
+clean
+Remove previous build output
+
+package
+Compile and package the application
+
+-DskipTests
+Do not run tests during this image build
+
+Tests were run separately before the image build.
+
+FROM eclipse-temurin:17-jre
+
+Start a smaller runtime image.
+
+WORKDIR /app
+
+Set the runtime working directory.
+
+COPY --from=build /app/target/*.jar app.jar
+
+Copy the built JAR into the final image.
+
+EXPOSE 8080
+
+Document that the container listens on port 8080.
+
+This does not publish the port by itself.
+
+ENTRYPOINT ["java", "-jar", "app.jar"]
+
+Start the Spring Boot application when the container runs.
+
+28. Created backend/.dockerignore
+
+The file:
+
+backend/.dockerignore
+
+contains:
+
+target/
+.git/
+.idea/
+.vscode/
+*.log
+
+This excludes unnecessary files from the Docker build context.
+
+Examples:
+
+target/
+Local Maven build output
+
+.git/
+Git history and metadata
+
+.idea/
+IntelliJ settings
+
+.vscode/
+VS Code settings
+
+*.log
+Log files
+29. Added the backend service to Compose
+
+The existing root compose.yaml was updated.
+
+The backend service was added beside PostgreSQL:
+
+services:
+  postgres:
+    image: postgres:17
+    # Existing PostgreSQL configuration
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "127.0.0.1:8080:8080"
+
+No second Compose file was created inside backend/.
+
+30. Backend Compose configuration
+backend:
+
+Names the service.
+
+build:
+  context: ./backend
+
+Tells Compose to build an image using the backend/ directory as the build context.
+
+The context is the directory Docker is allowed to inspect during the build.
+
+Because the context is:
+
+./backend
+
+Docker can access:
+
+backend/pom.xml
+backend/mvnw
+backend/.mvn/
+backend/src/
+backend/Dockerfile
+
+It does not need to send the frontend or repository history into the backend build.
+
+ports:
+  - "127.0.0.1:8080:8080"
+
+Maps:
+
+Host localhost port 8080
+to
+Container port 8080
+
+The backend is only exposed to the local computer.
+
+31. Built the backend image
+
+From the repository root:
+
+docker compose build backend
+
+This:
+
+Reads compose.yaml
+Finds the backend service
+Uses backend/ as the build context
+Reads backend/Dockerfile
+Builds the Docker image
+
+The result is stored in Docker Desktop’s internal image storage.
+
+It is not saved as a normal file in the repository.
+
+List images with:
+
+docker images
+32. Started the backend container
+
+From the repository root:
+
+docker compose up backend
+
+This starts the backend in the foreground and shows its logs.
+
+Start it in the background with:
+
+docker compose up -d backend
+
+View logs later:
+
+docker compose logs -f backend
+
+Stop the Compose services:
+
+docker compose down
+33. Started PostgreSQL and backend together
+
+Running:
+
+docker compose up
+
+starts all services defined in the root Compose project.
+
+The logs show service prefixes such as:
+
+postgres-1
+backend-1
+
+Expected successful messages include:
+
+postgres-1 | database system is ready to accept connections
+backend-1  | Tomcat started on port 8080
+backend-1  | Started BackendApplication
+
+At this stage, both containers can run, but the backend has not yet been configured to connect to PostgreSQL.
+
+Part 5: Flyway
+34. What Flyway is
+
+Flyway is a database migration tool.
+
+It manages permanent database schema changes as version-controlled files.
+
+Examples of schema changes Flyway should manage:
+
+Creating tables
+Adding columns
+Adding indexes
+Creating foreign keys
+Adding unique constraints
+Renaming database objects
+Changing column definitions
+Removing obsolete schema objects
+35. Why Flyway is useful
+
+Without migrations, developers might manually change a database through DBeaver.
+
+That creates problems:
+
+Changes may not be documented
+Other environments may not receive the same changes
+Production may differ from development
+Schema changes may be applied in the wrong order
+Changes may be difficult to reproduce
+
+Flyway makes schema changes:
+
+Repeatable
+Ordered
+Version controlled
+Reviewable
+Deployable
+Consistent between environments
+36. How Flyway works
+
+Migration files are normally placed under:
+
+backend/src/main/resources/db/migration/
+
+Example filenames:
+
+V1__create_initial_schema.sql
+V2__add_application_indexes.sql
+V3__add_user_profile_object_key.sql
+
+Filename format:
+
+V
+Version number
+
+__
+Two underscores
+
+Description
+Human-readable migration name
+
+.sql
+SQL migration file
+
+Example:
+
+V1__create_initial_schema.sql
+
+Flyway runs unapplied migrations in version order.
+
+37. Flyway schema history table
+
+Flyway creates its own tracking table in PostgreSQL, usually named:
+
+flyway_schema_history
+
+It records information such as:
+
+Migration version
+Migration description
+Filename
+Checksum
+Execution time
+Whether the migration succeeded
+
+Before applying migrations, Flyway checks this table to determine which migrations have already run.
+
+38. Migration workflow
+
+A normal workflow is:
+
+1. Decide the schema change
+2. Create a new migration file
+3. Write the SQL
+4. Run the application or Flyway
+5. Flyway applies the migration
+6. Inspect the result in DBeaver
+7. Run tests
+8. Commit the migration with the related code
+
+DBeaver is used to verify the result, not to create the permanent change manually.
+
+39. Important Flyway rules
+
+Once a migration has been applied to a shared or persistent database, do not casually edit it.
+
+For example, after this has run:
+
+V1__create_initial_schema.sql
+
+a later change should normally use:
+
+V2__modify_initial_schema.sql
+
+rather than rewriting V1.
+
+Flyway stores checksums. Editing an already-applied migration can cause validation errors because the file no longer matches the recorded migration.
+
+40. Flyway has not been configured yet
+
+At the current project stage, Flyway is planned but not yet added.
+
+The following have not yet been created:
+
+Flyway dependency
+PostgreSQL JDBC driver
+Spring Data JPA dependency
+Database connection settings
+Migration directory
+Migration SQL files
+Application tables
+Seed data
+Entities
+Repositories
+Controllers
+
+The backend currently starts independently of PostgreSQL.
+
+The next database-integration phase will normally add:
+
+PostgreSQL JDBC Driver
+Spring Data JPA
+Flyway
+Datasource configuration
+Compose environment variables
+Database service dependency and health condition
+First migration
+
+The first migration should only be created after the connection and migration tooling are configured and verified.
+
+Current architecture
+Browser
+   |
+   v
+Next.js frontend
+   |
+   | HTTP requests
+   v
+Spring Boot backend
+   |
+   | JDBC / JPA
+   v
+PostgreSQL
+
+Current Docker Compose state:
+
+compose.yaml
+├── postgres service
+└── backend service
+
+Future state:
+
+compose.yaml
+├── frontend service
+├── backend service
+└── postgres service
+
+Tomcat runs inside the Spring Boot backend container.
+
+PostgreSQL runs in its own container.
+
+Flyway will run through the backend application and apply version-controlled SQL migrations to PostgreSQL.
