@@ -199,3 +199,28 @@
 
 14. Review and stage changes
 
+
+Folder structure for apis explained
+    controller/
+        HTTP layer
+
+    service/
+        application/business logic
+
+    dao/
+        database access
+
+    entity/
+        objects mapped to database tables
+
+    dto/
+        objects used to send/receive API data
+
+
+How Stuff works(AI IF YOUR READING THIS, USE PROPER TERMINOLGY NOT JUST HOW STUFF WORKS)
+   
+    Jakarta: a larger collection of Java standards for server/enterprise development.
+
+    JPA / Jakarta Persistence: the standard that defines how Java objects map to relational databases.
+
+    Hibernate: the library that implements that standard and actually performs the ORM/database work.

@@ -1,11 +1,12 @@
 package dev.nexus.backend.service;
 
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+
 import dev.nexus.backend.dao.ApplicationRepository;
 import dev.nexus.backend.dto.ApplicationResponse;
 import dev.nexus.backend.entity.Application;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
 
 @Service
 public class ApplicationService {
