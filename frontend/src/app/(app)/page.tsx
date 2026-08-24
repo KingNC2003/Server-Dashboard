@@ -1,5 +1,7 @@
-export default function Main(){
-    return (
-        null
-    )
+export default function Main() {
+  return (
+    <div>
+      <h1>spacey</h1>
+    </div>
+  );
 }
